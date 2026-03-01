@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- ============================================================
+     EagleEye Logistics — Main HTML Entry Point
+     This is the ONLY HTML file in the project.
+     React mounts the entire app inside the <div id="root"> below.
+     ============================================================ -->
+<html lang="en">
+  <head>
+    <!-- Character encoding: supports all Unicode characters (emojis, special chars) -->
+    <meta charset="UTF-8" />
+
+    <!-- Makes the page responsive on mobile screens -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO description shown in Google search results -->
+    <meta name="description" content="EagleEye Logistics - Precision Intelligence for Every Mile. Real-time global tracking and orchestrated logistics data." />
+
+    <!-- Browser toolbar/status bar color on Android Chrome -->
+    <meta name="theme-color" content="#0058BE" />
+
+    <!-- Allows the web app to run as a standalone app on iPhone (no browser bar) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <!-- iOS status bar style when running as standalone app -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Page title shown in browser tab -->
+    <title>EagleEye Logistics</title>
+
+    <!-- Favicon (small icon in browser tab) -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- PWA manifest: makes the site installable as an app on phones -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- iPhone home screen icon when user saves site to home screen -->
+    <link rel="apple-touch-icon" href="/images/icon-192.png" />
+
+    <script>
+      // Service Worker Registration:
+      // This enables PWA (Progressive Web App) features like offline support.
+      // If the browser supports service workers, register sw.js after page loads.
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <!-- React mounts the entire application inside this empty div.
+         All pages, components, and UI are injected here dynamically. -->
+    <div id="root"></div>
+
+    <!-- The React app entry point (main.tsx) is loaded as a JS module here -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
