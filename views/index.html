@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EagleEye Logistics</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🦅 EagleEye</div>
+        <div class="nav-links">
+            <a href="#" class="active" onclick="showCustomerPortal()">Track</a>
+            <a href="#" onclick="showAdminPortal()">Admin</a>
+            <a href="#" onclick="showAgentPortal()">Agent</a>
+        </div>
+    </nav>
+
+    <!-- Customer Tracking View -->
+    <main id="customer-view" class="view-section active">
+        <div class="hero">
+            <h1>Track Your Consignment</h1>
+            <p>Real-time location updates directly to your screen.</p>
+            <div class="search-box">
+                <input type="text" id="awb-input" placeholder="Enter AWB Number (e.g. EE123456)">
+                <button onclick="trackConsignment()">Track</button>
+            </div>
+        </div>
+
+        <div id="tracking-result" class="hidden">
+            <div class="status-card">
+                <h2 id="current-status">Status: Loading...</h2>
+                <p id="package-weight">Weight: -</p>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="timeline" id="timeline-container">
+                    <!-- Dynamic timeline injected here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
