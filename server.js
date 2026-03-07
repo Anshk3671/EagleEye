@@ -11,7 +11,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+// Database Initialization
+const db = require('./src/database/db');
+
+// Import Routes
+const userRoutes = require('./src/routes/userRoutes');
+const hubRoutes = require('./src/routes/hubRoutes');
+const consignmentRoutes = require('./src/routes/consignmentRoutes');
+
+// Use Routes
+app.use('/api/users', userRoutes);
+app.use('/api/hubs', hubRoutes);
+app.use('/api/consignment', consignmentRoutes);
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
