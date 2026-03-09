@@ -28,8 +28,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-// Database Initialization
-const db = require('./src/database/db');
+// Database is already initialized above
 
 // Start Server
 app.listen(PORT, () => {
