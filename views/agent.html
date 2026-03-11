@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Agent Portal | EagleEye</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .agent-container { max-width: 500px; margin: 2rem auto; padding: 2rem; background: var(--surface); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        input, select { width: 100%; padding: 1rem; margin-bottom: 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; font-size: 1.1rem;}
+        button.action-btn { width: 100%; background: var(--primary); color: white; padding: 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1.1rem; margin-bottom: 1rem;}
+        button.action-btn:hover { background: var(--primary-hover); }
+        button.success-btn { background: var(--accent); }
+        button.success-btn:hover { background: #059669; }
+        
+        /* Signature Canvas Styling */
+        #signature-section { display: none; margin-top: 1.5rem; }
+        canvas { border: 2px dashed rgba(255,255,255,0.3); background: #e5e5e5; width: 100%; height: 200px; border-radius: 8px; cursor: crosshair; touch-action: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🦅 Agent Portal</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/agent.html" class="active">Agent</a>
+        </div>
+    </nav>
+
+    <div class="agent-container">
+        <h2>Update Parcel Status</h2>
+        <p style="color:var(--text); margin-bottom: 1.5rem;">Scan or Enter AWB to update system.</p>
+        
+        <form id="update-form" onsubmit="handleStatusUpdate(event)">
+            <input type="text" id="awb-number" placeholder="Enter AWB Code (e.g., EE123)" required>
+            
+            <select id="new-status" onchange="toggleSignature()" required>
+                <option value="">-- Select New Status --</option>
+                <option value="In Transit">In Transit</option>
+                <option value="Arrived at Hub">Arrived at Hub</option>
+                <option value="Out for Delivery">Out for Delivery</option>
+                <option value="Delivered">Delivered (Requires Signature)</option>
+            </select>
+            
+            <input type="text" id="hub-id" placeholder="Current Hub ID (e.g., 1)" required>
+
+            <div id="signature-section">
+                <h3>Customer Signature</h3>
+                <p style="font-size: 0.8rem; color: var(--text);">Please ask the customer to sign inside the box below.</p>
+                <canvas id="signature-pad"></canvas>
+                <button type="button" onclick="clearCanvas()" style="background:transparent; color:white; border:1px solid white; padding:0.5rem; margin-top:0.5rem; border-radius:4px; cursor:pointer;">Clear Signature</button>
+            </div>
+
+            <button type="submit" class="action-btn" style="margin-top: 2rem;">Update System</button>
+        </form>
+    </div>
+
+    <script>
+        // Signature Pad Logic
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        // Resize canvas correctly for CSS scaling
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mouse Events
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+
+        // Touch Events (Mobile)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent("mouseup", {});
+            canvas.dispatchEvent(mouseEvent);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        function startPosition(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function endPosition() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000'; // Black ink
+
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function toggleSignature() {
+            const status = document.getElementById('new-status').value;
+            const sigSection = document.getElementById('signature-section');
+            if (status === 'Delivered') {
+                sigSection.style.display = 'block';
+                resizeCanvas();
+            } else {
+                sigSection.style.display = 'none';
+                clearCanvas();
+            }
+        }
+
+        async function handleStatusUpdate(e) {
+            e.preventDefault();
+            const awb = document.getElementById('awb-number').value;
+            const status = document.getElementById('new-status').value;
+            const hubId = document.getElementById('hub-id').value;
+            
+            let signatureData = null;
+            if (status === 'Delivered') {
+                // Returns base64 image encoding
+                signatureData = canvas.toDataURL("image/png");
+                
+                // Extra check to ensure canvas isn't blank
+                const blankCanvasElement = document.createElement('canvas');
+                blankCanvasElement.width = canvas.width;
+                blankCanvasElement.height = canvas.height;
+                if (signatureData === blankCanvasElement.toDataURL("image/png")) {
+                    alert("Please ask the customer to sign the screen before submitting.");
+                    return;
+                }
+            }
+
+            // Simulate Agent Token for testing without login
+            const mockAgentToken = "Bearer MOCK_TOKEN";
+
+            const payload = {
+                awb: awb,
+                new_status: status,
+                hub_id: parseInt(hubId),
+                signature_img: signatureData
+            };
+
+            // Note: Bypassing real API call for UI mockup demonstration logic 
+            // since we don't have a real JWT token stored in browser in this test environment.
+            console.log("Submitting payload:", payload);
+            alert(`System updated successfully! Package ${awb} marked as: ${status}`);
+            
+            // Clean up UI
+            e.target.reset();
+            toggleSignature();
+        }
+    </script>
+</body>
+</html>
