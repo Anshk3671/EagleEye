@@ -7,3 +7,4 @@
 [2026-03-08] Yash Bhardwaj: Database indexing and query optimization for high-speed tracking
 [2026-03-09] Abeer Bartaria: UI Tweak: Interactive markers and popup info for active shipments
 [2026-03-10] Ansh Kumar: Fix syntax error: duplicate db instantiation in services
+[2026-03-11] Yash Bhardwaj: Implement security middleware for API route protection
