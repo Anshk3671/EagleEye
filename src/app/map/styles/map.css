@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════════
+   MAPLIBRE GL — Custom Map Styles
+   Auto dark/light theme, pulse markers, popups
+   ═══════════════════════════════════════════════════════════ */
+
+/* Base container */
+.eagle-map-container {
+  width: 100%;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.eagle-map-container .maplibregl-map {
+  border-radius: inherit;
+}
+
+/* ── Remove default Maplibre branding clutter ── */
+.eagle-map-container .maplibregl-ctrl-logo {
+  display: none !important;
+}
+.eagle-map-container .maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+/* ── Zoom Controls ── */
+.eagle-map-container .maplibregl-ctrl-group {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.5) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.eagle-map-container .maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  transition: all 0.2s ease;
+}
+
+.eagle-map-container .maplibregl-ctrl-group button:hover {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+}
+
+.eagle-map-container .maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(51, 65, 85, 0.4) !important;
+}
+
+.eagle-map-container .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.7);
+}
+
+/* ── Light theme override ── */
+html:not(.dark) .eagle-map-container .maplibregl-ctrl-group {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(203, 213, 225, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+html:not(.dark) .eagle-map-container .maplibregl-ctrl-group button {
+  color: #475569 !important;
+}
+
+html:not(.dark) .eagle-map-container .maplibregl-ctrl-group button:hover {
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #2563eb !important;
+}
+
+html:not(.dark) .eagle-map-container .maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(203, 213, 225, 0.5) !important;
+}
+
+html:not(.dark) .eagle-map-container .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: none;
+}
+
+/* ── Hub Marker ── */
+.hub-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  position: relative;
+}
+
+.hub-marker:hover {
+  transform: scale(1.25);
+  z-index: 10 !important;
+}
+
+/* Pulse ring animation */
+.hub-marker::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: hubPulse 2.5s ease-out infinite;
+}
+
+.hub-marker.tier-1::before {
+  animation-duration: 2s;
+}
+
+@keyframes hubPulse {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Popup Styles ── */
+.maplibregl-popup-content {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  min-width: 200px;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  right: 8px !important;
+  top: 6px !important;
+  transition: color 0.2s;
+}
+
+.maplibregl-popup-close-button:hover {
+  color: #f8fafc !important;
+  background: transparent !important;
+}
+
+/* Light theme popups */
+html:not(.dark) .maplibregl-popup-content {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  color: #1e293b;
+}
+
+html:not(.dark) .maplibregl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+html:not(.dark) .maplibregl-popup-close-button {
+  color: #64748b !important;
+}
+
+html:not(.dark) .maplibregl-popup-close-button:hover {
+  color: #0f172a !important;
+}
+
+/* ── Popup Content Layout ── */
+.hub-popup-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 11px;
+}
+
+.hub-popup-row .label {
+  color: #94a3b8;
+}
+
+html:not(.dark) .hub-popup-row .label {
+  color: #64748b;
+}
+
+.hub-popup-row .value {
+  font-weight: 600;
+}
