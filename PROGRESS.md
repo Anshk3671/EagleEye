@@ -12,3 +12,4 @@
 [2026-03-13] Ansh Kumar: Interactive Map: Add info windows and route highlighting
 [2026-03-14] Yash Bhardwaj: Advanced AWB logic: Sequence-based generation with facility codes
 [2026-03-15] Abeer Bartaria: Backend services testing: Unit tests for consignment lifecycle
+[2026-03-16] Ansh Kumar: Agent Dashboard: Mobile-responsive grid layout and task views
