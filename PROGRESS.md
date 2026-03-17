@@ -13,3 +13,4 @@
 [2026-03-14] Yash Bhardwaj: Advanced AWB logic: Sequence-based generation with facility codes
 [2026-03-15] Abeer Bartaria: Backend services testing: Unit tests for consignment lifecycle
 [2026-03-16] Ansh Kumar: Agent Dashboard: Mobile-responsive grid layout and task views
+[2026-03-17] Yash Bhardwaj: Fix authentication: Correct module import path for transitSim
