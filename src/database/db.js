@@ -1,64 +1,94 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
+// Ensure database directory exists
 const dbPath = path.resolve(__dirname, 'eagleeye.db');
+
+// Connect to the SQLite Database
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('Error opening database', err.message);
+        console.error('Error opening database: ' + err.message);
     } else {
         console.log('Connected to the SQLite database.');
-        createTables();
+
+        // Enable foreign keys
+        db.run('PRAGMA foreign_keys = ON;', (err) => {
+            if (err) console.error("Could not enable foreign keys: ", err.message);
+        });
+
+        setupDatabase();
     }
 });
 
-function createTables() {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            phone TEXT,
-            password_hash TEXT NOT NULL,
-            role TEXT CHECK(role IN ('Customer', 'Admin', 'Agent')) NOT NULL
-        );
+function setupDatabase() {
+    db.serialize(() => {
+        // 1. Create Users Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT CHECK( role IN ('admin', 'agent', 'customer') ) NOT NULL DEFAULT 'customer',
+                phone TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        CREATE TABLE IF NOT EXISTS hubs (
-            hub_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            hub_name TEXT NOT NULL,
-            address TEXT NOT NULL,
-            pincode TEXT NOT NULL,
-            latitude REAL,
-            longitude REAL
-        );
+        // 2. Create Hubs Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS hubs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                city TEXT NOT NULL,
+                address TEXT,
+                latitude REAL,
+                longitude REAL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        CREATE TABLE IF NOT EXISTS consignments (
-            awb TEXT PRIMARY KEY,
-            sender_id INTEGER,
-            source_hub INTEGER,
-            dest_hub INTEGER,
-            weight REAL,
-            current_status TEXT,
-            order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-            signature_img TEXT,
-            FOREIGN KEY (sender_id) REFERENCES users(user_id),
-            FOREIGN KEY (source_hub) REFERENCES hubs(hub_id),
-            FOREIGN KEY (dest_hub) REFERENCES hubs(hub_id)
-        );
+        // 3. Create Consignments (Parcels) Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS consignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                awb_number TEXT UNIQUE NOT NULL,
+                user_id INTEGER NOT NULL,
+                recipient_name TEXT NOT NULL,
+                recipient_phone TEXT NOT NULL,
+                recipient_address TEXT NOT NULL,
+                origin_hub_id INTEGER,
+                destination_hub_id INTEGER,
+                current_hub_id INTEGER,
+                weight REAL,
+                status TEXT CHECK( status IN ('Booked', 'In Transit', 'At Hub', 'Out for Delivery', 'Delivered', 'Returned') ) NOT NULL DEFAULT 'Booked',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (origin_hub_id) REFERENCES hubs (id),
+                FOREIGN KEY (destination_hub_id) REFERENCES hubs (id),
+                FOREIGN KEY (current_hub_id) REFERENCES hubs (id)
+            )
+        `);
 
-        CREATE TABLE IF NOT EXISTS tracking_events (
-            track_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            awb TEXT,
-            hub_id INTEGER,
-            agent_id INTEGER,
-            scan_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-            activity TEXT,
-            FOREIGN KEY (awb) REFERENCES consignments(awb),
-            FOREIGN KEY (hub_id) REFERENCES hubs(hub_id),
-            FOREIGN KEY (agent_id) REFERENCES users(user_id)
-        );
-    `);
-    
-    console.log("Database tables initialized.");
+        // 4. Create Tracking History Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS tracking_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                consignment_id INTEGER NOT NULL,
+                hub_id INTEGER,
+                status TEXT NOT NULL,
+                remarks TEXT,
+                updated_by INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (consignment_id) REFERENCES consignments (id) ON DELETE CASCADE,
+                FOREIGN KEY (hub_id) REFERENCES hubs (id),
+                FOREIGN KEY (updated_by) REFERENCES users (id)
+            )
+        `);
+
+        console.log("Database schema initialized successfully.");
+    });
 }
 
 module.exports = db;
