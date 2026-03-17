@@ -7,16 +7,16 @@ router.post('/register', (req, res) => {
     const { name, email, phone, password, role } = req.body;
     
     // In a real app, hash password using bcrypt! For this project, we store as plain for simplicity
-    const password_hash = password; 
+    const validRoles = ['customer', 'admin', 'agent'];
+    const userRole = role ? role.toLowerCase() : 'customer';
 
-    const validRoles = ['Customer', 'Admin', 'Agent'];
-    if (!validRoles.includes(role)) {
+    if (!validRoles.includes(userRole)) {
         return res.status(400).json({ error: 'Invalid role specified.' });
     }
 
-    const query = `INSERT INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)`;
     
-    db.run(query, [name, email, phone, password_hash, role], function(err) {
+    db.run(query, [name, email, phone, password, userRole], function(err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 return res.status(400).json({ error: 'Email already registered.' });
@@ -35,7 +35,7 @@ router.post('/login', (req, res) => {
         if (err) return res.status(500).json({ error: 'Database error.' });
         if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
 
-        if (password !== user.password_hash) {
+        if (password !== user.password) {
              return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
@@ -43,7 +43,7 @@ router.post('/login', (req, res) => {
         res.status(200).json({
             message: 'Login successful!',
             token,
-            user: { id: user.user_id, name: user.name, role: user.role }
+            user: { id: user.id, name: user.name, role: user.role }
         });
     });
 });

@@ -5,14 +5,14 @@ const { authenticateToken } = require('../controllers/authController');
 
 // Add a new Hub (Admin Only)
 router.post('/add', authenticateToken, (req, res) => {
-    if (req.user.role !== 'Admin') {
+    if (req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Only Admins can add hubs.' });
     }
 
-    const { hub_name, address, pincode, latitude, longitude } = req.body;
+    const { name, city, address, latitude, longitude } = req.body;
 
-    const query = `INSERT INTO hubs (hub_name, address, pincode, latitude, longitude) VALUES (?, ?, ?, ?, ?)`;
-    db.run(query, [hub_name, address, pincode, latitude, longitude], function(err) {
+    const query = `INSERT INTO hubs (name, city, address, latitude, longitude) VALUES (?, ?, ?, ?, ?)`;
+    db.run(query, [name, city, address, latitude, longitude], function(err) {
         if (err) return res.status(500).json({ error: 'Database error.', details: err.message });
         res.status(201).json({ message: 'Hub added successfully!', hubId: this.lastID });
     });
