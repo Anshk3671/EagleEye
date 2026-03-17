@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
-const { generateToken, JWT_SECRET } = require('./authController');
+const { generateToken, JWT_SECRET } = require('../controllers/authController');
 
 router.post('/register', (req, res) => {
     const { name, email, phone, password, role } = req.body;
