@@ -10,9 +10,10 @@
         .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; padding: 2rem 5%; }
         .dashboard-card { background: var(--surface); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }
         .stat-number { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
-        input, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; }
-        button.admin-btn { width: 100%; background: var(--accent); color: white; padding: 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        button.admin-btn:hover { background: #059669; }
+        input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        button.admin-btn { width: 100%; background: var(--accent); color: white; padding: 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.3s; }
+        button.admin-btn:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -21,7 +22,7 @@
         <div class="nav-links">
             <a href="/">Track</a>
             <a href="/admin.html" class="active">Dashboard</a>
-            <a href="/agent.html">Agent Portal</a>
+            <button onclick="logout()" style="background:none; border:none; color:#EF4444; cursor:pointer; font-weight:bold; margin-left:2rem;">Logout</button>
         </div>
     </nav>
 
@@ -34,82 +35,218 @@
             <button class="admin-btn" style="margin-top:1rem; background: var(--primary)" onclick="fetchNetworkStatus()">Refresh Stats</button>
         </div>
 
-        <!-- Add Delivery Agent -->
+        <!-- Add New Hub -->
+        <div class="dashboard-card">
+            <h2>Add Distribution Hub</h2>
+            <form id="hub-form" onsubmit="addHub(event)">
+                <input type="text" id="hub-name" placeholder="Hub Name (e.g. Delhi-NCR Main)" required>
+                <input type="text" id="hub-city" placeholder="City" required>
+                <input type="text" id="hub-address" placeholder="Full Address">
+                <div style="display:flex; gap:10px;">
+                    <input type="number" step="any" id="hub-lat" placeholder="Lat (e.g. 28.61)">
+                    <input type="number" step="any" id="hub-lng" placeholder="Lng (e.g. 77.23)">
+                </div>
+                <button type="submit" class="admin-btn">Register Hub</button>
+            </form>
+        </div>
+
+        <!-- Register Agent -->
         <div class="dashboard-card">
             <h2>Register Delivery Agent</h2>
             <form id="agent-form" onsubmit="registerAgent(event)">
                 <input type="text" id="agent-name" placeholder="Full Name" required>
                 <input type="email" id="agent-email" placeholder="Email Address" required>
                 <input type="text" id="agent-phone" placeholder="Phone Number" required>
-                <input type="password" id="agent-password" placeholder="Temporary Password" required>
-                <select id="hub-select" required>
-                    <option value="">Select Assigned Hub (Loading...)</option>
-                </select>
-                <button type="submit" class="admin-btn">Create Agent Account</button>
+                <input type="password" id="agent-password" placeholder="Password" required>
+                <button type="submit" class="admin-btn" style="background: var(--primary)">Create Agent Account</button>
             </form>
         </div>
 
         <!-- Broadcast Alert -->
         <div class="dashboard-card">
-            <h2>Send Broadcast Alert</h2>
+            <h2>Broadcast Alert</h2>
             <form id="broadcast-form" onsubmit="sendBroadcast(event)">
                 <select id="target-group" required>
-                    <option value="All Agents">All Agents</option>
-                    <option value="All Customers">All Customers</option>
-                    <option value="System Wide">System Wide</option>
+                    <option value="agents">All Agents</option>
+                    <option value="customers">All Customers</option>
+                    <option value="system">System Wide</option>
                 </select>
-                <textarea id="broadcast-msg" rows="4" style="width:100%; padding:0.8rem; border-radius:6px; background:var(--dark); color:white; border:1px solid rgba(255,255,255,0.2)" placeholder="Type emergency alert here..." required></textarea>
-                <button type="submit" class="admin-btn" style="background: #ef4444; margin-top: 1rem;">Send Alert</button>
+                <textarea id="broadcast-msg" rows="3" placeholder="Type emergency alert here..." required></textarea>
+                <button type="submit" class="admin-btn" style="background: #ef4444;">Send Alert</button>
+            </form>
+        </div>
+
+        <!-- Book Consignment -->
+        <div class="dashboard-card" style="grid-column: span 1;">
+            <h2>Book New Consignment</h2>
+            <form id="booking-form" onsubmit="bookConsignment(event)">
+                <input type="text" id="recipient-name" placeholder="Recipient Name" required>
+                <input type="text" id="recipient-phone" placeholder="Recipient Phone" required>
+                <input type="text" id="recipient-address" placeholder="Recipient Address" required>
+                <select id="origin-hub" required>
+                    <option value="">-- Select Origin Hub --</option>
+                </select>
+                <select id="dest-hub" required>
+                    <option value="">-- Select Destination Hub --</option>
+                </select>
+                <input type="number" id="weight" placeholder="Weight (kg)" required>
+                <button type="submit" class="admin-btn" style="background: var(--accent);">Create Booking</button>
             </form>
         </div>
     </div>
 
     <script>
-        // NOTE: In a real app, Admin would login first and store a JWT token.
-        // For this demo, we simulate the token passing or bypass it for evaluation visibility.
-        
+        const token = localStorage.getItem('eagleeye_token');
+        const user = JSON.parse(localStorage.getItem('eagleeye_user'));
+
+        if (!token || user?.role !== 'admin') {
+            alert("Unauthorized. Admin access only.");
+            window.location.href = '/';
+        }
+
+        function logout() {
+            localStorage.removeItem('eagleeye_token');
+            localStorage.removeItem('eagleeye_user');
+            window.location.href = '/';
+        }
+
         async function fetchNetworkStatus() {
-            // Simulated fetch since auth is required
-            document.getElementById('network-stats').innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                    <span>In Transit</span> <span class="stat-number">24</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                    <span>Out for Delivery</span> <span class="stat-number" style="color:#eab308">8</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>Delivered Today</span> <span class="stat-number" style="color:var(--accent)">112</span>
-                </div>
-            `;
+            try {
+                const res = await fetch('/api/admin/network-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                let html = '';
+                if (data.length === 0) html = '<p>No consignments in network.</p>';
+                data.forEach(stat => {
+                    html += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                            <span>${stat.status}</span> <span class="stat-number">${stat.count}</span>
+                        </div>
+                    `;
+                });
+                document.getElementById('network-stats').innerHTML = html;
+            } catch (err) {
+                document.getElementById('network-stats').textContent = "Failed to load stats.";
+            }
+        }
+
+        async function addHub(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('hub-name').value,
+                city: document.getElementById('hub-city').value,
+                address: document.getElementById('hub-address').value,
+                latitude: document.getElementById('hub-lat').value || 0,
+                longitude: document.getElementById('hub-lng').value || 0
+            };
+
+            try {
+                const res = await fetch('/api/hubs/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Hub added successfully!");
+                    e.target.reset();
+                    loadHubs(); // Refresh hub lists
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (err) { alert("Server error."); }
         }
 
         async function registerAgent(e) {
             e.preventDefault();
-            // In a real app this would POST to /api/users/register with Role='Agent'
-            alert("Agent account created successfully! Temporary credentials sent via SMS (Simulated).");
-            e.target.reset();
+            const payload = {
+                name: document.getElementById('agent-name').value,
+                email: document.getElementById('agent-email').value,
+                phone: document.getElementById('agent-phone').value,
+                password: document.getElementById('agent-password').value,
+                role: 'agent'
+            };
+
+            try {
+                const res = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Agent registered successfully!");
+                    e.target.reset();
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (err) { alert("Server error."); }
         }
 
         async function sendBroadcast(e) {
             e.preventDefault();
-            const group = document.getElementById('target-group').value;
-            alert(`Broadcast Alert successfully pushed to: ${group}`);
-            e.target.reset();
+            const payload = {
+                targetGroup: document.getElementById('target-group').value,
+                message: document.getElementById('broadcast-msg').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Broadcast sent successfully!");
+                    e.target.reset();
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        async function bookConsignment(e) {
+            e.preventDefault();
+            const payload = {
+                recipient_name: document.getElementById('recipient-name').value,
+                recipient_phone: document.getElementById('recipient-phone').value,
+                recipient_address: document.getElementById('recipient-address').value,
+                origin_hub_id: parseInt(document.getElementById('origin-hub').value),
+                destination_hub_id: parseInt(document.getElementById('dest-hub').value),
+                weight: parseFloat(document.getElementById('weight').value)
+            };
+
+            try {
+                const res = await fetch('/api/consignment/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Consignment booked! AWB: ${data.awb_number}`);
+                    e.target.reset();
+                    fetchNetworkStatus();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) { alert("Server error."); }
         }
 
         async function loadHubs() {
             try {
                 const res = await fetch('/api/hubs/all');
                 const hubs = await res.json();
-                const select = document.getElementById('hub-select');
-                select.innerHTML = '<option value="">Select Assigned Hub</option>';
+                const originSelect = document.getElementById('origin-hub');
+                const destSelect = document.getElementById('dest-hub');
+                
+                let options = '<option value="">-- Select Hub --</option>';
                 hubs.forEach(h => {
-                    select.innerHTML += `<option value="${h.hub_id}">${h.hub_name} (${h.pincode})</option>`;
+                    options += `<option value="${h.id}">${h.name} (${h.city})</option>`;
                 });
-            } catch (e) {
-                console.error("Hubs err", e);
-                document.getElementById('hub-select').innerHTML = '<option value="">Error loading hubs</option>';
-            }
+                originSelect.innerHTML = options;
+                destSelect.innerHTML = options;
+            } catch (err) { console.error(err); }
         }
 
         // Init
