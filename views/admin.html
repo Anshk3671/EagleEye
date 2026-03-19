@@ -6,14 +6,16 @@
     <title>Admin Dashboard | EagleEye</title>
     <link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; padding: 2rem 5%; }
-        .dashboard-card { background: var(--surface); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .dashboard-card { background: var(--surface); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .stat-number { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
-        input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; outline: none; }
-        input:focus { border-color: var(--primary); }
-        button.admin-btn { width: 100%; background: var(--accent); color: white; padding: 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.3s; }
-        button.admin-btn:hover { opacity: 0.9; }
+        input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; outline: none; transition: all 0.3s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(79, 70, 229, 0.3); }
+        button.admin-btn { width: 100%; background: var(--primary); color: white; padding: 1rem; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.3s; }
+        button.admin-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4); }
+        .chart-container { position: relative; height: 250px; width: 100%; margin-top: 1rem; }
     </style>
 </head>
 <body>
@@ -28,11 +30,13 @@
 
     <div class="admin-grid">
         <!-- Live Network Status -->
-        <div class="dashboard-card">
+        <div class="dashboard-card" style="grid-column: span 1;">
             <h2>Live Network Status</h2>
             <hr style="margin: 1rem 0; border-color: rgba(255,255,255,0.1);">
-            <div id="network-stats">Loading...</div>
-            <button class="admin-btn" style="margin-top:1rem; background: var(--primary)" onclick="fetchNetworkStatus()">Refresh Stats</button>
+            <div class="chart-container">
+                <canvas id="networkChart"></canvas>
+            </div>
+            <button class="admin-btn" style="margin-top:1.5rem;" onclick="fetchNetworkStatus()">Sync Real-time Data</button>
         </div>
 
         <!-- Add New Hub -->
@@ -110,6 +114,8 @@
             window.location.href = '/';
         }
 
+        let networkChart;
+
         async function fetchNetworkStatus() {
             try {
                 const res = await fetch('/api/admin/network-status', {
@@ -117,18 +123,48 @@
                 });
                 const data = await res.json();
                 
-                let html = '';
-                if (data.length === 0) html = '<p>No consignments in network.</p>';
-                data.forEach(stat => {
-                    html += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                            <span>${stat.status}</span> <span class="stat-number">${stat.count}</span>
-                        </div>
-                    `;
-                });
-                document.getElementById('network-stats').innerHTML = html;
+                const labels = data.map(s => s.status);
+                const counts = data.map(s => s.count);
+
+                const ctx = document.getElementById('networkChart').getContext('2d');
+                
+                if (networkChart) {
+                    networkChart.data.labels = labels;
+                    networkChart.data.datasets[0].data = counts;
+                    networkChart.update();
+                } else {
+                    networkChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Consignment Count',
+                                data: counts,
+                                backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                                borderRadius: 8,
+                                borderSkipped: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1E293B',
+                                    padding: 10,
+                                    bodyFont: { size: 14 }
+                                }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#CBD5E1' } },
+                                x: { grid: { display: false }, ticks: { color: '#CBD5E1' } }
+                            }
+                        }
+                    });
+                }
             } catch (err) {
-                document.getElementById('network-stats').textContent = "Failed to load stats.";
+                console.error("Failed to load stats.", err);
             }
         }
 
