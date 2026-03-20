@@ -16,3 +16,4 @@
 [2026-03-17] Yash Bhardwaj: Fix authentication: Correct module import path for transitSim
 [2026-03-18] Abeer Bartaria: Advanced Transit Simulation: Real-time load movement across hubs
 [2026-03-19] Ansh Kumar: UI Feedback: Toast notifications and loading states for API calls
+[2026-03-20] Yash Bhardwaj: Documentation: Detailed API documentation and README update
