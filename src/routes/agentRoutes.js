@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { authenticateToken } = require('../controllers/authController');
+const { logHistory } = require('../services/historyService');
 
 // Agent Updates Status of a Consignment
 router.post('/status', authenticateToken, (req, res) => {
@@ -16,14 +17,10 @@ router.post('/status', authenticateToken, (req, res) => {
         if (err) return res.status(500).json({ error: 'Failed to update consignment status.' });
         if (this.changes === 0) return res.status(404).json({ error: 'AWB not found.' });
 
-        // Get consignment ID for history
+        // Get consignment ID for history and log using service
         db.get(`SELECT id FROM consignments WHERE awb_number = ?`, [awb_number], (err, row) => {
             if (row) {
-                // Insert event into history
-                db.run(
-                    `INSERT INTO tracking_history (consignment_id, hub_id, status, remarks, updated_by) VALUES (?, ?, ?, ?, ?)`, 
-                    [row.id, hub_id, new_status, remarks || `Status updated to: ${new_status}`, agent_id]
-                );
+                logHistory(row.id, hub_id, new_status, remarks || `Status updated to: ${new_status}`, agent_id);
             }
         });
 

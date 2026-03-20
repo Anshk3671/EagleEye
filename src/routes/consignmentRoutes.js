@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
-const { authenticateToken } = require('../controllers/authController');
+const { logHistory } = require('../services/historyService');
 
-// Helper to generate AWB
+// Helper to generate AWB (Advanced Format: EE-YEAR-RANDOM)
 function generateAWB() {
-    return 'EE' + Math.floor(100000 + Math.random() * 900000);
+    const year = new Date().getFullYear();
+    const random = Math.floor(10000 + Math.random() * 90000);
+    return `EE-${year}-${random}`;
 }
 
 // Book a new Consignment
@@ -29,11 +30,14 @@ router.post('/book', authenticateToken, (req, res) => {
         
         const consignmentId = this.lastID;
 
-        // Log initial tracking event
-        db.run(`INSERT INTO tracking_history (consignment_id, hub_id, status, remarks, updated_by) VALUES (?, ?, ?, ?, ?)`, 
-                [consignmentId, origin_hub_id, initial_status, 'Consignment Booked', user_id]);
-        
-        res.status(201).json({ message: 'Consignment booked successfully!', awb_number: awb });
+        // Log initial tracking event using centralized service
+        logHistory(consignmentId, origin_hub_id, initial_status, 'Consignment Booked at origin', user_id)
+            .then(() => {
+                res.status(201).json({ message: 'Consignment booked successfully!', awb_number: awb });
+            })
+            .catch(err => {
+                res.status(201).json({ message: 'Consignment booked, but history log failed.', awb_number: awb });
+            });
     });
 });
 
