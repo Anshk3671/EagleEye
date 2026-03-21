@@ -28,6 +28,21 @@ router.post('/broadcast', authenticateToken, (req, res) => {
     res.status(200).json({ success: true, message: 'Broadcast sent successfully!' });
 });
 
+// Assign Agent to Consignment (March 21 - Step 6)
+router.post('/assign-agent', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { awbNumber, agentId } = req.body;
+    
+    const query = `UPDATE consignments SET assigned_agent_id = ? WHERE awb_number = ?`;
+    db.run(query, [agentId, awbNumber], function(err) {
+        if (err) return res.status(500).json({ error: 'Database error.' });
+        if (this.changes === 0) return res.status(404).json({ error: 'Consignment not found.' });
+        
+        res.status(200).json({ success: true, message: `Agent assigned to ${awbNumber} successfully!` });
+    });
+});
+
 // Get recent tracking history network
 router.get('/recent-activity', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Access denied.' });

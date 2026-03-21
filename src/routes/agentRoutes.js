@@ -28,4 +28,23 @@ router.post('/status', authenticateToken, (req, res) => {
     });
 });
 
+// Get Assigned Tasks for Agent (March 21 - Step 6)
+router.get('/tasks', authenticateToken, (req, res) => {
+    if (req.user.role !== 'agent') return res.status(403).json({ error: 'Access denied.' });
+
+    const agent_id = req.user.id;
+    const query = `
+        SELECT c.*, sh.name as source_hub, dh.name as dest_hub 
+        FROM consignments c
+        LEFT JOIN hubs sh ON c.origin_hub_id = sh.id
+        LEFT JOIN hubs dh ON c.destination_hub_id = dh.id
+        WHERE c.assigned_agent_id = ? AND c.status NOT IN ('Delivered', 'Returned')
+    `;
+    
+    db.all(query, [agent_id], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error.' });
+        res.status(200).json(rows);
+    });
+});
+
 module.exports = router;

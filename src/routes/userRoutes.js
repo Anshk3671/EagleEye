@@ -48,4 +48,13 @@ router.post('/login', (req, res) => {
     });
 });
 
+// Fetch all agents (March 21 - Step 6)
+router.get('/agents', (req, res) => {
+    const query = `SELECT id, name, email FROM users WHERE role = 'agent'`;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error.' });
+        res.status(200).json(rows);
+    });
+});
+
 module.exports = router;

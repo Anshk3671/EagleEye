@@ -81,7 +81,7 @@
         </div>
 
         <!-- Book Consignment -->
-        <div class="dashboard-card" style="grid-column: span 1;">
+        <div class="dashboard-card">
             <h2>Book New Consignment</h2>
             <form id="booking-form" onsubmit="bookConsignment(event)">
                 <input type="text" id="recipient-name" placeholder="Recipient Name" required>
@@ -95,6 +95,18 @@
                 </select>
                 <input type="number" id="weight" placeholder="Weight (kg)" required>
                 <button type="submit" class="admin-btn" style="background: var(--accent);">Create Booking</button>
+            </form>
+        </div>
+
+        <!-- Assign Agent (March 21 - Step 6) -->
+        <div class="dashboard-card">
+            <h2>Assign Agent to Consignment</h2>
+            <form id="assign-agent-form" onsubmit="assignAgent(event)">
+                <input type="text" id="assign-awb" placeholder="AWB Number (e.g. EE-2026-12345)" required>
+                <select id="agent-list" required>
+                    <option value="">-- Select Agent --</option>
+                </select>
+                <button type="submit" class="admin-btn" style="background: #10B981;">Assign Delivery Agent</button>
             </form>
         </div>
     </div>
@@ -187,7 +199,7 @@
                 if (res.ok) {
                     alert("Hub added successfully!");
                     e.target.reset();
-                    loadHubs(); // Refresh hub lists
+                    loadHubs();
                 } else {
                     const err = await res.json();
                     alert(err.error);
@@ -214,6 +226,7 @@
                 if (res.ok) {
                     alert("Agent registered successfully!");
                     e.target.reset();
+                    loadAgents();
                 } else {
                     const err = await res.json();
                     alert(err.error);
@@ -285,9 +298,49 @@
             } catch (err) { console.error(err); }
         }
 
+        async function loadAgents() {
+            try {
+                const res = await fetch('/api/users/agents', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const agents = await res.json();
+                const agentSelect = document.getElementById('agent-list');
+                
+                let options = '<option value="">-- Select Agent --</option>';
+                agents.forEach(a => {
+                    options += `<option value="${a.id}">${a.name} (${a.email})</option>`;
+                });
+                agentSelect.innerHTML = options;
+            } catch (err) { console.error(err); }
+        }
+
+        async function assignAgent(e) {
+            e.preventDefault();
+            const payload = {
+                awbNumber: document.getElementById('assign-awb').value,
+                agentId: parseInt(document.getElementById('agent-list').value)
+            };
+
+            try {
+                const res = await fetch('/api/admin/assign-agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    e.target.reset();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
         // Init
         fetchNetworkStatus();
         loadHubs();
+        loadAgents();
     </script>
 </body>
 </html>

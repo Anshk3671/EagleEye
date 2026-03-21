@@ -63,13 +63,27 @@ function setupDatabase() {
                 current_hub_id INTEGER,
                 weight REAL,
                 status TEXT CHECK( status IN ('Booked', 'In Transit', 'At Hub', 'Out for Delivery', 'Delivered', 'Returned') ) NOT NULL DEFAULT 'Booked',
+                assigned_agent_id INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 FOREIGN KEY (origin_hub_id) REFERENCES hubs (id),
                 FOREIGN KEY (destination_hub_id) REFERENCES hubs (id),
-                FOREIGN KEY (current_hub_id) REFERENCES hubs (id)
+                FOREIGN KEY (current_hub_id) REFERENCES hubs (id),
+                FOREIGN KEY (assigned_agent_id) REFERENCES users(id)
             )
         `);
+
+        // Migration: Add assigned_agent_id if it doesn't exist
+        db.run(`ALTER TABLE consignments ADD COLUMN assigned_agent_id INTEGER REFERENCES users(id)`, (err) => {
+            if (err) {
+                // Ignore error if column already exists
+                if (!err.message.includes('duplicate column name')) {
+                    console.error("Migration error (assigned_agent_id):", err.message);
+                }
+            } else {
+                console.log("Migration: added assigned_agent_id column to consignments.");
+            }
+        });
 
         // 4. Create Tracking History Table
         db.run(`
