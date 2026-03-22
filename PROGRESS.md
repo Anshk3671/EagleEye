@@ -18,3 +18,4 @@
 [2026-03-19] Ansh Kumar: UI Feedback: Toast notifications and loading states for API calls
 [2026-03-20] Yash Bhardwaj: Documentation: Detailed API documentation and README update
 [2026-03-21] Abeer Bartaria: Agent Assignment Flow: Logic for explicit parcel tasking
+[2026-03-22] Ansh Kumar: V2 (Orion) Design: Foundation for glassmorphism and dark mode
