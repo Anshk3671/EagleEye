@@ -11,9 +11,15 @@ An Automated Web-Based Courier & Consignment Tracking System built with Node.js,
 
 ## Features
 - **Customer Portal**: Interactive UI for tracking and booking parcels using interactive maps (OpenStreetMap).
-- **Admin Dashboard**: Web-based administration for managing hubs and sending broad-cast notifications.
-- **Agent Mobile Interface**: Mobile-responsive web view for status updates and proof of delivery capture.
+- **Admin Dashboard**: Web-based administration for managing hubs, registering agents, and assigning deliveries.
+- **Agent Mobile Interface**: Mobile-responsive web view for viewing assigned tasks, updating status, and capturing proof of delivery.
+- **Advanced AWB Logic**: Automated serial-based AWB generation with integrated tracking history hooks.
 - **Robust Database**: SQLite integration to safely store AWB tracking records, hubs, users, and statuses. 
+
+---
+### Development Status (March 2026)
+- **Step 1-5**: Core backend, frontend integration, maps, and advanced tracking logic (Mar 01 - Mar 20).
+- **Step 6**: **Agent Assignment System & Final Polish (Mar 21)**. The system now supports explicit agent tasking and specialized agent dashboards.
 
 ## Requirements
 - Node.js (v18+)

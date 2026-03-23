@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Agent Portal | EagleEye</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .agent-container { max-width: 500px; margin: 2rem auto; padding: 2rem; background: var(--surface); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        input, select { width: 100%; padding: 1rem; margin-bottom: 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; font-size: 1.1rem;}
+        button.action-btn { width: 100%; background: var(--primary); color: white; padding: 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1.1rem; margin-bottom: 1rem;}
+        button.action-btn:hover { background: var(--primary-hover); }
+        
+        #signature-section { display: none; margin-top: 1.5rem; }
+        canvas { border: 2px dashed rgba(255,255,255,0.3); background: #ffffff; width: 100%; height: 200px; border-radius: 8px; cursor: crosshair; touch-action: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🦅 Agent Portal</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <button onclick="logout()" style="background:none; border:none; color:#EF4444; cursor:pointer; font-weight:bold; margin-left:2rem;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="agent-container">
+        <h2>Update Parcel Status</h2>
+        <p style="color:var(--text); margin-bottom: 1.5rem;">Update the status for the consignment below.</p>
+        
+        <form id="update-form" onsubmit="handleStatusUpdate(event)">
+            <input type="text" id="awb-number" placeholder="Enter AWB Number (e.g., EE123456)" required>
+            
+            <select id="new-status" onchange="toggleSignature()" required>
+                <option value="">-- Select New Status --</option>
+                <option value="In Transit">In Transit</option>
+                <option value="At Hub">At Hub</option>
+                <option value="Out for Delivery">Out for Delivery</option>
+                <option value="Delivered">Delivered (Requires Signature)</option>
+                <option value="Returned">Returned</option>
+            </select>
+            
+            <select id="hub-id" required>
+                <option value="">-- Select Current Hub --</option>
+            </select>
+
+            <input type="text" id="remarks" placeholder="Remarks (optional)">
+
+            <div id="signature-section">
+                <h3>Customer Signature</h3>
+                <canvas id="signature-pad"></canvas>
+                <button type="button" onclick="clearCanvas()" style="background:transparent; color:white; border:1px solid white; padding:0.5rem; margin-top:0.5rem; border-radius:4px; cursor:pointer;">Clear Signature</button>
+            </div>
+
+            <button type="submit" class="action-btn" style="margin-top: 2rem;">Update System</button>
+        </form>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('eagleeye_token');
+        const user = JSON.parse(localStorage.getItem('eagleeye_user'));
+
+        if (!token || user?.role !== 'agent') {
+            alert("Unauthorized. Agent access only.");
+            window.location.href = '/';
+        }
+
+        function logout() {
+            localStorage.removeItem('eagleeye_token');
+            localStorage.removeItem('eagleeye_user');
+            window.location.href = '/';
+        }
+
+        // Signature logic
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; draw(e); });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; ctx.beginPath(); });
+        canvas.addEventListener('mousemove', draw);
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke(); ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function toggleSignature() {
+            const status = document.getElementById('new-status').value;
+            const sigSection = document.getElementById('signature-section');
+            if (status === 'Delivered') {
+                sigSection.style.display = 'block';
+                resizeCanvas();
+            } else {
+                sigSection.style.display = 'none';
+                clearCanvas();
+            }
+        }
+
+        async function loadHubs() {
+            try {
+                const res = await fetch('/api/hubs/all');
+                const hubs = await res.json();
+                const select = document.getElementById('hub-id');
+                hubs.forEach(h => {
+                    select.innerHTML += `<option value="${h.id}">${h.name} (${h.city})</option>`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function handleStatusUpdate(e) {
+            e.preventDefault();
+            const payload = {
+                awb_number: document.getElementById('awb-number').value,
+                new_status: document.getElementById('new-status').value,
+                hub_id: document.getElementById('hub-id').value,
+                remarks: document.getElementById('remarks').value
+            };
+
+            if (payload.new_status === 'Delivered') {
+                payload.remarks = "Package Delivered. Signature captured.";
+            }
+
+            try {
+                const res = await fetch('/api/agent/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Status updated successfully!");
+                    e.target.reset();
+                    toggleSignature();
+                } else {
+                    const data = await res.json();
+                    alert(data.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        loadHubs();
+    </script>
+</body>
+</html>

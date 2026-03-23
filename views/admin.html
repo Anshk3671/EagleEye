@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | EagleEye</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; padding: 2rem 5%; }
+        .dashboard-card { background: var(--surface); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .stat-number { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+        input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; outline: none; transition: all 0.3s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(79, 70, 229, 0.3); }
+        button.admin-btn { width: 100%; background: var(--primary); color: white; padding: 1rem; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.3s; }
+        button.admin-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4); }
+        .chart-container { position: relative; height: 250px; width: 100%; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🦅 EagleEye Admin</div>
+        <div class="nav-links">
+            <a href="/">Track</a>
+            <a href="/admin.html" class="active">Dashboard</a>
+            <button onclick="logout()" style="background:none; border:none; color:#EF4444; cursor:pointer; font-weight:bold; margin-left:2rem;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="admin-grid">
+        <!-- Live Network Status -->
+        <div class="dashboard-card" style="grid-column: span 1;">
+            <h2>Live Network Status</h2>
+            <hr style="margin: 1rem 0; border-color: rgba(255,255,255,0.1);">
+            <div class="chart-container">
+                <canvas id="networkChart"></canvas>
+            </div>
+            <button class="admin-btn" style="margin-top:1.5rem;" onclick="fetchNetworkStatus()">Sync Real-time Data</button>
+        </div>
+
+        <!-- Add New Hub -->
+        <div class="dashboard-card">
+            <h2>Add Distribution Hub</h2>
+            <form id="hub-form" onsubmit="addHub(event)">
+                <input type="text" id="hub-name" placeholder="Hub Name (e.g. Delhi-NCR Main)" required>
+                <input type="text" id="hub-city" placeholder="City" required>
+                <input type="text" id="hub-address" placeholder="Full Address">
+                <div style="display:flex; gap:10px;">
+                    <input type="number" step="any" id="hub-lat" placeholder="Lat (e.g. 28.61)">
+                    <input type="number" step="any" id="hub-lng" placeholder="Lng (e.g. 77.23)">
+                </div>
+                <button type="submit" class="admin-btn">Register Hub</button>
+            </form>
+        </div>
+
+        <!-- Register Agent -->
+        <div class="dashboard-card">
+            <h2>Register Delivery Agent</h2>
+            <form id="agent-form" onsubmit="registerAgent(event)">
+                <input type="text" id="agent-name" placeholder="Full Name" required>
+                <input type="email" id="agent-email" placeholder="Email Address" required>
+                <input type="text" id="agent-phone" placeholder="Phone Number" required>
+                <input type="password" id="agent-password" placeholder="Password" required>
+                <button type="submit" class="admin-btn" style="background: var(--primary)">Create Agent Account</button>
+            </form>
+        </div>
+
+        <!-- Broadcast Alert -->
+        <div class="dashboard-card">
+            <h2>Broadcast Alert</h2>
+            <form id="broadcast-form" onsubmit="sendBroadcast(event)">
+                <select id="target-group" required>
+                    <option value="agents">All Agents</option>
+                    <option value="customers">All Customers</option>
+                    <option value="system">System Wide</option>
+                </select>
+                <textarea id="broadcast-msg" rows="3" placeholder="Type emergency alert here..." required></textarea>
+                <button type="submit" class="admin-btn" style="background: #ef4444;">Send Alert</button>
+            </form>
+        </div>
+
+        <!-- Book Consignment -->
+        <div class="dashboard-card">
+            <h2>Book New Consignment</h2>
+            <form id="booking-form" onsubmit="bookConsignment(event)">
+                <input type="text" id="recipient-name" placeholder="Recipient Name" required>
+                <input type="text" id="recipient-phone" placeholder="Recipient Phone" required>
+                <input type="text" id="recipient-address" placeholder="Recipient Address" required>
+                <select id="origin-hub" required>
+                    <option value="">-- Select Origin Hub --</option>
+                </select>
+                <select id="dest-hub" required>
+                    <option value="">-- Select Destination Hub --</option>
+                </select>
+                <input type="number" id="weight" placeholder="Weight (kg)" required>
+                <button type="submit" class="admin-btn" style="background: var(--accent);">Create Booking</button>
+            </form>
+        </div>
+
+        <!-- Assign Agent (March 21 - Step 6) -->
+        <div class="dashboard-card">
+            <h2>Assign Agent to Consignment</h2>
+            <form id="assign-agent-form" onsubmit="assignAgent(event)">
+                <input type="text" id="assign-awb" placeholder="AWB Number (e.g. EE-2026-12345)" required>
+                <select id="agent-list" required>
+                    <option value="">-- Select Agent --</option>
+                </select>
+                <button type="submit" class="admin-btn" style="background: #10B981;">Assign Delivery Agent</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('eagleeye_token');
+        const user = JSON.parse(localStorage.getItem('eagleeye_user'));
+
+        if (!token || user?.role !== 'admin') {
+            alert("Unauthorized. Admin access only.");
+            window.location.href = '/';
+        }
+
+        function logout() {
+            localStorage.removeItem('eagleeye_token');
+            localStorage.removeItem('eagleeye_user');
+            window.location.href = '/';
+        }
+
+        let networkChart;
+
+        async function fetchNetworkStatus() {
+            try {
+                const res = await fetch('/api/admin/network-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const labels = data.map(s => s.status);
+                const counts = data.map(s => s.count);
+
+                const ctx = document.getElementById('networkChart').getContext('2d');
+                
+                if (networkChart) {
+                    networkChart.data.labels = labels;
+                    networkChart.data.datasets[0].data = counts;
+                    networkChart.update();
+                } else {
+                    networkChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Consignment Count',
+                                data: counts,
+                                backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                                borderRadius: 8,
+                                borderSkipped: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1E293B',
+                                    padding: 10,
+                                    bodyFont: { size: 14 }
+                                }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#CBD5E1' } },
+                                x: { grid: { display: false }, ticks: { color: '#CBD5E1' } }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load stats.", err);
+            }
+        }
+
+        async function addHub(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('hub-name').value,
+                city: document.getElementById('hub-city').value,
+                address: document.getElementById('hub-address').value,
+                latitude: document.getElementById('hub-lat').value || 0,
+                longitude: document.getElementById('hub-lng').value || 0
+            };
+
+            try {
+                const res = await fetch('/api/hubs/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Hub added successfully!");
+                    e.target.reset();
+                    loadHubs();
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        async function registerAgent(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('agent-name').value,
+                email: document.getElementById('agent-email').value,
+                phone: document.getElementById('agent-phone').value,
+                password: document.getElementById('agent-password').value,
+                role: 'agent'
+            };
+
+            try {
+                const res = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Agent registered successfully!");
+                    e.target.reset();
+                    loadAgents();
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        async function sendBroadcast(e) {
+            e.preventDefault();
+            const payload = {
+                targetGroup: document.getElementById('target-group').value,
+                message: document.getElementById('broadcast-msg').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("Broadcast sent successfully!");
+                    e.target.reset();
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        async function bookConsignment(e) {
+            e.preventDefault();
+            const payload = {
+                recipient_name: document.getElementById('recipient-name').value,
+                recipient_phone: document.getElementById('recipient-phone').value,
+                recipient_address: document.getElementById('recipient-address').value,
+                origin_hub_id: parseInt(document.getElementById('origin-hub').value),
+                destination_hub_id: parseInt(document.getElementById('dest-hub').value),
+                weight: parseFloat(document.getElementById('weight').value)
+            };
+
+            try {
+                const res = await fetch('/api/consignment/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Consignment booked! AWB: ${data.awb_number}`);
+                    e.target.reset();
+                    fetchNetworkStatus();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        async function loadHubs() {
+            try {
+                const res = await fetch('/api/hubs/all');
+                const hubs = await res.json();
+                const originSelect = document.getElementById('origin-hub');
+                const destSelect = document.getElementById('dest-hub');
+                
+                let options = '<option value="">-- Select Hub --</option>';
+                hubs.forEach(h => {
+                    options += `<option value="${h.id}">${h.name} (${h.city})</option>`;
+                });
+                originSelect.innerHTML = options;
+                destSelect.innerHTML = options;
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadAgents() {
+            try {
+                const res = await fetch('/api/users/agents', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const agents = await res.json();
+                const agentSelect = document.getElementById('agent-list');
+                
+                let options = '<option value="">-- Select Agent --</option>';
+                agents.forEach(a => {
+                    options += `<option value="${a.id}">${a.name} (${a.email})</option>`;
+                });
+                agentSelect.innerHTML = options;
+            } catch (err) { console.error(err); }
+        }
+
+        async function assignAgent(e) {
+            e.preventDefault();
+            const payload = {
+                awbNumber: document.getElementById('assign-awb').value,
+                agentId: parseInt(document.getElementById('agent-list').value)
+            };
+
+            try {
+                const res = await fetch('/api/admin/assign-agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    e.target.reset();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) { alert("Server error."); }
+        }
+
+        // Init
+        fetchNetworkStatus();
+        loadHubs();
+        loadAgents();
+    </script>
+</body>
+</html>

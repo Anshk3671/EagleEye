@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EagleEye Logistics</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🦅 EagleEye</div>
+        <div class="nav-links">
+            <a href="#" class="active" onclick="showCustomerPortal()">Track</a>
+            <div id="auth-nav" style="display: inline-block;">
+                <a href="#" onclick="openModal('login-modal')">Login</a>
+            </div>
+            <div id="user-nav" class="hidden" style="display: inline-flex; align-items: center; margin-left: 1rem;">
+                <a href="#" id="admin-link" class="hidden" onclick="showAdminPortal()">Admin</a>
+                <a href="#" id="agent-link" class="hidden" onclick="showAgentPortal()">Agent</a>
+                <div class="user-profile" style="margin-left: 1.5rem;">
+                    <div class="user-avatar" id="user-initials">U</div>
+                    <span id="user-name">User</span>
+                    <a href="#" onclick="logout()" style="margin-left: 1rem; font-size: 0.8rem; color: #EF4444;">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Customer Tracking View -->
+    <main id="customer-view" class="view-section active">
+        <div class="hero">
+            <h1>Track Your Consignment</h1>
+            <p>Real-time location updates directly to your screen.</p>
+            <div class="search-box">
+                <input type="text" id="awb-input" placeholder="Enter AWB Number (e.g. EE123456)">
+                <button onclick="trackConsignment()">Track</button>
+            </div>
+        </div>
+
+        <div id="tracking-result" class="hidden">
+            <div class="status-card">
+                <h2 id="current-status">Status: Loading...</h2>
+                <p id="package-weight">Weight: -</p>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="timeline" id="timeline-container">
+                    <!-- Dynamic timeline injected here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Modals -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Welcome Back</h2>
+            <p>Enter your credentials to continue.</p>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="modal-btn">Sign In</button>
+            </form>
+            <div class="modal-links">
+                Don't have an account? <a href="#" onclick="openModal('register-modal')">Create one</a>
+            </div>
+            <button class="modal-btn" style="background:none; color:var(--text); margin-top:0.5rem;" onclick="closeModals()">Close</button>
+        </div>
+    </div>
+
+    <div id="register-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Create Account</h2>
+            <p>Join the EagleEye logistics network.</p>
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="reg-name" required placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="reg-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" required placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="reg-role">
+                        <option value="customer">Customer</option>
+                        <option value="admin">Admin</option>
+                        <option value="agent">Agent</option>
+                    </select>
+                </div>
+                <button type="submit" class="modal-btn">Register</button>
+            </form>
+            <div class="modal-links">
+                Already have an account? <a href="#" onclick="openModal('login-modal')">Sign in</a>
+            </div>
+            <button class="modal-btn" style="background:none; color:var(--text); margin-top:0.5rem;" onclick="closeModals()">Close</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
