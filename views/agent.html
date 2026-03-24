@@ -133,6 +133,7 @@
 
             if (payload.new_status === 'Delivered') {
                 payload.remarks = "Package Delivered. Signature captured.";
+                payload.signature = canvas.toDataURL('image/png');
             }
 
             try {

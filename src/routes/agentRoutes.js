@@ -8,12 +8,12 @@ const { logHistory } = require('../services/historyService');
 router.post('/status', authenticateToken, (req, res) => {
     if (req.user.role !== 'agent') return res.status(403).json({ error: 'Access denied.' });
 
-    const { awb_number, new_status, hub_id, remarks } = req.body;
+    const { awb_number, new_status, hub_id, remarks, signature } = req.body;
     const agent_id = req.user.id;
 
-    const query = `UPDATE consignments SET status = ?, current_hub_id = ? WHERE awb_number = ?`;
+    const query = `UPDATE consignments SET status = ?, current_hub_id = ?, signature_img = COALESCE(?, signature_img) WHERE awb_number = ?`;
     
-    db.run(query, [new_status, hub_id || null, awb_number], function(err) {
+    db.run(query, [new_status, hub_id || null, signature || null, awb_number], function(err) {
         if (err) return res.status(500).json({ error: 'Failed to update consignment status.' });
         if (this.changes === 0) return res.status(404).json({ error: 'AWB not found.' });
 

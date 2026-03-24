@@ -85,6 +85,18 @@ function setupDatabase() {
             }
         });
 
+        // Migration: Add signature_img for Proof of Delivery
+        db.run(`ALTER TABLE consignments ADD COLUMN signature_img TEXT`, (err) => {
+            if (err) {
+                // Ignore error if column already exists
+                if (!err.message.includes('duplicate column name')) {
+                    console.error("Migration error (signature_img):", err.message);
+                }
+            } else {
+                console.log("Migration: added signature_img column to consignments.");
+            }
+        });
+
         // 4. Create Tracking History Table
         db.run(`
             CREATE TABLE IF NOT EXISTS tracking_history (
