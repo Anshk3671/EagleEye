@@ -14,7 +14,13 @@
         
         #signature-section { display: none; margin-top: 1.5rem; }
         canvas { border: 2px dashed rgba(255,255,255,0.3); background: #ffffff; width: 100%; height: 200px; border-radius: 8px; cursor: crosshair; touch-action: none; }
+        
+        #reader { width: 100%; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; display: none; }
+        #reader video { border-radius: 8px; }
+        .scan-btn { background: #10B981; color: white; padding: 0.8rem; width: 100%; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 1rem; }
+        .scan-btn:hover { background: #059669; }
     </style>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -30,8 +36,12 @@
         <p style="color:var(--text); margin-bottom: 1.5rem;">Update the status for the consignment below.</p>
         
         <form id="update-form" onsubmit="handleStatusUpdate(event)">
-            <input type="text" id="awb-number" placeholder="Enter AWB Number (e.g., EE123456)" required>
             
+            <button type="button" class="scan-btn" onclick="startScanner()" id="start-scan-btn">📷 Scan Barcode</button>
+            <button type="button" class="scan-btn" onclick="stopScanner()" id="stop-scan-btn" style="display: none; background: #EF4444;">Stop Scanning</button>
+            <div id="reader"></div>
+
+            <input type="text" id="awb-number" placeholder="Enter AWB Number (e.g., EE123456)" required>
             <select id="new-status" onchange="toggleSignature()" required>
                 <option value="">-- Select New Status --</option>
                 <option value="In Transit">In Transit</option>
@@ -70,6 +80,40 @@
             localStorage.removeItem('eagleeye_token');
             localStorage.removeItem('eagleeye_user');
             window.location.href = '/';
+        }
+
+        // Barcode Scanner Logic
+        let html5QrcodeScanner = null;
+
+        function startScanner() {
+            document.getElementById('reader').style.display = 'block';
+            document.getElementById('start-scan-btn').style.display = 'none';
+            document.getElementById('stop-scan-btn').style.display = 'block';
+
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} }, /* verbose= */ false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function stopScanner() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().then(() => {
+                    document.getElementById('reader').style.display = 'none';
+                    document.getElementById('start-scan-btn').style.display = 'block';
+                    document.getElementById('stop-scan-btn').style.display = 'none';
+                }).catch(err => console.error("Failed to clear scanner", err));
+            }
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Handle the scanned code
+            document.getElementById('awb-number').value = decodedText;
+            stopScanner();
+            alert(`Barcode Scanned: ${decodedText}`);
+        }
+
+        function onScanFailure(error) {
+            // handle scan failure, usually better to ignore and keep scanning
+            // console.warn(`Code scan error = ${error}`);
         }
 
         // Signature logic
