@@ -33,6 +33,16 @@
         <div class="dashboard-card" style="grid-column: span 1;">
             <h2>Live Network Status</h2>
             <hr style="margin: 1rem 0; border-color: rgba(255,255,255,0.1);">
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <div style="flex: 1; background: rgba(79, 70, 229, 0.1); padding: 1rem; border-radius: 8px;">
+                    <h4 style="margin: 0; color: #CBD5E1;">Total Revenue</h4>
+                    <div class="stat-number" id="dash-revenue">₹0</div>
+                </div>
+                <div style="flex: 1; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px;">
+                    <h4 style="margin: 0; color: #CBD5E1;">Active Hubs</h4>
+                    <div class="stat-number" id="dash-hubs" style="color: #10B981;">0</div>
+                </div>
+            </div>
             <div class="chart-container">
                 <canvas id="networkChart"></canvas>
             </div>
@@ -135,8 +145,11 @@
                 });
                 const data = await res.json();
                 
-                const labels = data.map(s => s.status);
-                const counts = data.map(s => s.count);
+                document.getElementById('dash-revenue').innerText = '₹' + (data.revenue || 0).toFixed(2);
+                document.getElementById('dash-hubs').innerText = data.activeHubs || 0;
+
+                const labels = data.statuses.map(s => s.status);
+                const counts = data.statuses.map(s => s.count);
 
                 const ctx = document.getElementById('networkChart').getContext('2d');
                 

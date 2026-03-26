@@ -7,14 +7,22 @@ const { authenticateToken } = require('../controllers/authController');
 router.get('/network-status', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Access denied.' });
 
-    const query = `
-        SELECT status, COUNT(*) as count 
-        FROM consignments 
-        GROUP BY status
-    `;
-    db.all(query, [], (err, rows) => {
+    const responseData = { statuses: [], revenue: 0, activeHubs: 0 };
+
+    db.all(`SELECT status, COUNT(*) as count FROM consignments GROUP BY status`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: 'Database error.' });
-        res.status(200).json(rows);
+        responseData.statuses = rows;
+
+        // Calculate Revenue proxy (Weight * 50)
+        db.get(`SELECT SUM(weight * 50) as revenue FROM consignments`, [], (err, row) => {
+            if (!err && row) responseData.revenue = row.revenue || 0;
+
+            db.get(`SELECT COUNT(*) as count FROM hubs`, [], (err, row) => {
+                if (!err && row) responseData.activeHubs = row.count || 0;
+                
+                res.status(200).json(responseData);
+            });
+        });
     });
 });
 
