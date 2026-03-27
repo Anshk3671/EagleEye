@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { authenticateToken } = require('../controllers/authController');
+const notificationService = require('../services/notificationService');
 
 // Monitor Network Status (Live Dashboard Data)
 router.get('/network-status', authenticateToken, (req, res) => {
@@ -26,14 +27,19 @@ router.get('/network-status', authenticateToken, (req, res) => {
     });
 });
 
-// Broadcast Alert Simulation (Logs to console instead of real SMS)
-router.post('/broadcast', authenticateToken, (req, res) => {
+// Broadcast Alert
+router.post('/broadcast', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Access denied.' });
     
     const { targetGroup, message } = req.body;
-    console.log(`[BROADCAST ALERT to ${targetGroup}]: ${message}`);
     
-    res.status(200).json({ success: true, message: 'Broadcast sent successfully!' });
+    try {
+        const count = await notificationService.sendBroadcast(targetGroup, message, 'Alert');
+        res.status(200).json({ success: true, message: `Broadcast sent successfully to ${count} users!` });
+    } catch (err) {
+        console.error("Broadcast failed:", err);
+        res.status(500).json({ error: 'Failed to send broadcast.', details: err.message });
+    }
 });
 
 // Assign Agent to Consignment (March 21 - Step 6)
