@@ -9,6 +9,18 @@ function generateAWB() {
     return `EE-${year}-${random}`;
 }
 
+// Distance Calculation using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; 
+}
+
 // Book a new Consignment
 router.post('/book', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'agent') {
@@ -20,24 +32,33 @@ router.post('/book', authenticateToken, (req, res) => {
     const user_id = req.user.id; 
     const initial_status = 'Booked';
 
-    const insertConsignmentQuery = `
-        INSERT INTO consignments (awb_number, user_id, recipient_name, recipient_phone, recipient_address, origin_hub_id, destination_hub_id, current_hub_id, weight, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    db.run(insertConsignmentQuery, [awb, user_id, recipient_name, recipient_phone, recipient_address, origin_hub_id, destination_hub_id, origin_hub_id, weight, initial_status], function(err) {
-        if (err) return res.status(500).json({ error: 'Booking failed.', details: err.message });
-        
-        const consignmentId = this.lastID;
+    // Fetch origin and destination coordinates for pricing
+    db.get('SELECT latitude, longitude FROM hubs WHERE id = ?', [origin_hub_id], (err, origin) => {
+        if (err || !origin) return res.status(500).json({ error: 'Origin hub not found.' });
 
-        // Log initial tracking event using centralized service
-        logHistory(consignmentId, origin_hub_id, initial_status, 'Consignment Booked at origin', user_id)
-            .then(() => {
-                res.status(201).json({ message: 'Consignment booked successfully!', awb_number: awb });
-            })
-            .catch(err => {
-                res.status(201).json({ message: 'Consignment booked, but history log failed.', awb_number: awb });
+        db.get('SELECT latitude, longitude FROM hubs WHERE id = ?', [destination_hub_id], (err, dest) => {
+            if (err || !dest) return res.status(500).json({ error: 'Destination hub not found.' });
+
+            const distance = calculateDistance(origin.latitude, origin.longitude, dest.latitude, dest.longitude);
+            const baseRate = 50; // Flat base fee
+            const price = parseFloat((baseRate + (distance * weight * 0.05)).toFixed(2));
+
+            const insertConsignmentQuery = `
+                INSERT INTO consignments (awb_number, user_id, recipient_name, recipient_phone, recipient_address, origin_hub_id, destination_hub_id, current_hub_id, weight, status, price) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            
+            db.run(insertConsignmentQuery, [awb, user_id, recipient_name, recipient_phone, recipient_address, origin_hub_id, destination_hub_id, origin_hub_id, weight, initial_status, price], function(err) {
+                if (err) return res.status(500).json({ error: 'Booking failed.', details: err.message });
+                
+                const consignmentId = this.lastID;
+
+                // Log initial tracking event
+                logHistory(consignmentId, origin_hub_id, initial_status, 'Consignment Booked at origin', user_id)
+                    .then(() => res.status(201).json({ message: 'Consignment booked successfully!', awb_number: awb, price }))
+                    .catch(err => res.status(201).json({ message: 'Consignment booked, but history log failed.', awb_number: awb, price }));
             });
+        });
     });
 });
 

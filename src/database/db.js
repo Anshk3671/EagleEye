@@ -97,6 +97,18 @@ function setupDatabase() {
             }
         });
 
+        // Migration: Add price for dynamic pricing calculation
+        db.run(`ALTER TABLE consignments ADD COLUMN price REAL`, (err) => {
+            if (err) {
+                // Ignore error if column already exists
+                if (!err.message.includes('duplicate column name')) {
+                    console.error("Migration error (price):", err.message);
+                }
+            } else {
+                console.log("Migration: added price column to consignments.");
+            }
+        });
+
         // 4. Create Tracking History Table
         db.run(`
             CREATE TABLE IF NOT EXISTS tracking_history (

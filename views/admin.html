@@ -286,7 +286,7 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`Consignment booked! AWB: ${data.awb_number}`);
+                    alert(`Consignment booked! AWB: ${data.awb_number}\nEstimated Cost: ₹${data.price}`);
                     e.target.reset();
                     fetchNetworkStatus();
                 } else {
