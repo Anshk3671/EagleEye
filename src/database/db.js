@@ -137,6 +137,18 @@ function setupDatabase() {
             )
         `);
 
+        // 6. Create Audit Logs Table (March 30 - System Audit)
+        db.run(`
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                action TEXT NOT NULL,
+                ip_address TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        `);
+
         console.log("Database schema initialized successfully.");
     });
 }

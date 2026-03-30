@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../database/db');
 const { authenticateToken } = require('../controllers/authController');
 const notificationService = require('../services/notificationService');
+const auditService = require('../services/auditService');
 
 // Monitor Network Status (Live Dashboard Data)
 router.get('/network-status', authenticateToken, (req, res) => {
@@ -35,11 +36,39 @@ router.post('/broadcast', authenticateToken, async (req, res) => {
     
     try {
         const count = await notificationService.sendBroadcast(targetGroup, message, 'Alert');
+        auditService.logAction(req.user.id, `Sent broadcast to ${targetGroup}`, req.ip);
         res.status(200).json({ success: true, message: `Broadcast sent successfully to ${count} users!` });
     } catch (err) {
         console.error("Broadcast failed:", err);
         res.status(500).json({ error: 'Failed to send broadcast.', details: err.message });
     }
+});
+
+// Export Revenue Reports as CSV (March 30 - System Audit & Export)
+router.get('/export-reports', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Access denied.' });
+
+    const query = `
+        SELECT c.awb_number, c.weight, c.price, c.status, oh.name as origin, dh.name as dest, c.created_at
+        FROM consignments c
+        LEFT JOIN hubs oh ON c.origin_hub_id = oh.id
+        LEFT JOIN hubs dh ON c.destination_hub_id = dh.id
+        ORDER BY c.created_at DESC
+    `;
+    
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error.' });
+        
+        const header = "AWB,Weight(kg),Price(INR),Status,Origin,Destination,Date\n";
+        const csvRows = rows.map(r => `${r.awb_number},${r.weight},${r.price || 0},${r.status},"${r.origin}","${r.dest}",${r.created_at}`);
+        const csvData = header + csvRows.join('\n');
+        
+        auditService.logAction(req.user.id, 'Exported Revenue Report CSV', req.ip);
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=eagleeye_revenue_report.csv');
+        res.status(200).send(csvData);
+    });
 });
 
 // Assign Agent to Consignment (March 21 - Step 6)

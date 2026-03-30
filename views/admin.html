@@ -47,6 +47,7 @@
                 <canvas id="networkChart"></canvas>
             </div>
             <button class="admin-btn" style="margin-top:1.5rem;" onclick="fetchNetworkStatus()">Sync Real-time Data</button>
+            <button class="admin-btn" style="margin-top:0.5rem; background: #3B82F6;" onclick="downloadReport()">📥 Download Revenue CSV</button>
         </div>
 
         <!-- Add New Hub -->
@@ -348,6 +349,23 @@
                     alert(data.error);
                 }
             } catch (err) { alert("Server error."); }
+        }
+
+        async function downloadReport() {
+            try {
+                const res = await fetch('/api/admin/export-reports', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'eagleeye_revenue_report.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (err) { alert("Failed to download report."); }
         }
 
         // Init
