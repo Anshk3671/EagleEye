@@ -45,6 +45,7 @@
             <div class="status-card">
                 <h2 id="current-status">Status: Loading...</h2>
                 <p id="package-weight">Weight: -</p>
+                <p id="package-price" style="color: var(--accent); font-weight: bold;"></p>
             </div>
             
             <div class="map-container">
@@ -52,6 +53,11 @@
                 <div class="timeline" id="timeline-container">
                     <!-- Dynamic timeline injected here -->
                 </div>
+            </div>
+
+            <div id="signature-display" class="hidden" style="margin-top: 1.5rem; text-align: center; background: white; padding: 1rem; border-radius: 8px;">
+                <h3 style="color: black; margin-bottom: 0.5rem;">Proof of Delivery: Customer Signature</h3>
+                <img id="signature-img" src="" alt="Customer Signature" style="max-width: 100%; max-height: 200px; border: 1px solid #ccc; border-radius: 4px;">
             </div>
         </div>
     </main>

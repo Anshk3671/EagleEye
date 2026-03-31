@@ -147,6 +147,14 @@ async function trackConsignment() {
             document.getElementById('tracking-result').classList.remove('hidden');
             document.getElementById('current-status').textContent = `Status: ${data.consignment.status}`;
             document.getElementById('package-weight').textContent = `Weight: ${data.consignment.weight} kg`;
+            document.getElementById('package-price').textContent = data.consignment.price ? `Estimated Cost: ₹${data.consignment.price}` : '';
+            
+            if (data.consignment.signature_img) {
+                document.getElementById('signature-display').classList.remove('hidden');
+                document.getElementById('signature-img').src = data.consignment.signature_img;
+            } else {
+                document.getElementById('signature-display').classList.add('hidden');
+            }
             
             initMap();
             renderTrackingData(data.history);

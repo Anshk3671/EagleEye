@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../database/db');
+const { authenticateToken } = require('../controllers/authController');
 const { logHistory } = require('../services/historyService');
 
 // Helper to generate AWB (Advanced Format: EE-YEAR-RANDOM)
