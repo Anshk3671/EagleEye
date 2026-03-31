@@ -1,0 +1,256 @@
+// ============================================================
+// server/prisma/schema.prisma — Database Schema (Blueprint)
+//
+// This file defines the DATABASE STRUCTURE for EagleEye.
+// Prisma reads this file and creates/updates the actual database tables.
+//
+// What is Prisma?
+//  Prisma is an ORM (Object-Relational Mapper) — it lets you write
+//  TypeScript code to interact with the database instead of raw SQL.
+//
+// Database: PostgreSQL (production) / SQLite (development)
+// To apply changes: run `npx prisma migrate dev`
+// To regenerate client: run `npx prisma generate`
+//
+// Tables in this schema:
+//  1. User             → All users (customers, agents, admins)
+//  2. OtpVerification  → OTP codes for login
+//  3. Shipment         → All parcels/shipments
+//  4. TrackingEvent    → Timeline of events for each shipment
+//  5. Hub              → Logistics hub locations
+//  6. Agent            → Delivery agents
+//  7. DashboardStats   → Cached admin dashboard statistics
+//  8. Notification     → In-app notifications for users
+//  9. Payment          → Payment records (Razorpay)
+//  10. ShippingVolume  → Daily shipment volume (for charts)
+//  11. CallbackRequest → Customer callback requests
+// ============================================================
+
+// ── Generator: tells Prisma to generate a TypeScript/JavaScript client ──
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── Datasource: which database to connect to ──
+// DATABASE_URL is read from the .env file
+datasource db {
+  provider = "postgresql" // Using PostgreSQL database
+  url      = env("DATABASE_URL") // Connection string from environment variable
+}
+
+// ─── Auth Models ─────────────────────────────────────────
+
+// User: Stores all registered users in the system
+// One user can be both a customer AND an agent (different rows, same phone number)
+// The @@unique([phone, role]) constraint ensures each phone+role combo is unique
+model User {
+  id        String   @id @default(uuid()) // Auto-generated unique ID
+  phone     String                         // User's phone number (used for login)
+  role      String   // "customer", "agent", or "admin"
+  name      String   @default("")
+  email     String   @default("")
+  gender    String   @default("")
+  dob       String   @default("")          // Date of birth
+  address   String   @default("")
+  city      String   @default("")
+  pincode   String   @default("")
+  avatar    String   @default("")          // User's initials (e.g. "AK")
+  // Agent-specific fields (only used when role === "agent")
+  hubCode      String @default("")         // Which hub this agent belongs to (e.g. "DEL")
+  vehicleType  String @default("")         // "bike", "van", or "truck"
+  agentId      String @default("")
+  creditPoints Int    @default(0)          // Reward points earned
+  isNew     Boolean  @default(true)        // True if agent hasn't completed onboarding
+  createdAt DateTime @default(now())       // Auto-set when record is created
+  updatedAt DateTime @updatedAt            // Auto-updated whenever record changes
+
+  @@unique([phone, role]) // Same phone can have different roles (customer + agent)
+}
+
+// OtpVerification: Stores OTP codes for phone/email login verification
+// Flow: User requests OTP → stored here → user submits OTP → verified → login
+model OtpVerification {
+  id        String   @id @default(uuid())
+  phone     String                         // Which phone the OTP was sent to
+  otp       String                         // The 6-digit OTP code
+  role      String                         // Which role they're logging in as
+  expiresAt DateTime                       // OTP expires after 5 minutes
+  verified  Boolean  @default(false)       // True once the OTP has been used
+  createdAt DateTime @default(now())
+
+  @@index([phone, role]) // Fast lookup by phone + role
+}
+
+// ─── Core Business Models ─────────────────────────────────
+
+// Shipment: The main business entity — represents one parcel/package
+model Shipment {
+  id               String          @id @default(uuid())
+  awbNumber        String          @unique  // Air Waybill — unique tracking number (e.g. "EE-742-9910")
+  status           String          // "PENDING", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "DELAYED", "CANCELLED"
+  origin           String          // Starting location
+  destination      String          // Delivery destination
+  currentLocation  String          // Where the parcel is right now
+  senderName       String
+  senderAddress    String          @default("")
+  receiverName     String
+  receiverAddress  String          @default("")
+  weight           Float           // Package weight in kg
+  dimensions       String          // e.g. "30x20x15 cm"
+  declaredValue    Float           // Package's declared monetary value
+  currency         String          @default("USD")
+  expectedDelivery DateTime        // When the parcel should arrive
+  shipmentType     String          @default("STANDARD") // "STANDARD", "EXPRESS", or "PRIORITY"
+  customerPhone    String          @default("") // Which customer owns this shipment
+  customerName     String          @default("")
+  agentPhone       String          @default("") // Which agent is assigned to deliver
+  signatureUrl     String          @default("") // URL to proof-of-delivery signature image
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  events           TrackingEvent[] // All tracking events for this shipment (related table)
+
+  @@index([customerPhone]) // Fast lookup by customer
+}
+
+// TrackingEvent: Timeline of status changes for a shipment
+// e.g. "Picked up at Delhi Hub" → "In transit to Mumbai" → "Delivered"
+model TrackingEvent {
+  id          String   @id @default(uuid())
+  shipmentId  String                        // Which shipment this event belongs to
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade) // Links to Shipment
+  location    String                        // Where the event happened (city name)
+  locationCode String  @default("")         // Hub code (e.g. "DEL")
+  status      String                        // Status at this point
+  description String                        // Human-readable description (e.g. "Parcel reached Delhi Hub")
+  timestamp   DateTime                      // When this event happened
+  createdAt   DateTime @default(now())
+}
+
+// Hub: A logistics center/warehouse location
+model Hub {
+  id           String @id @default(uuid())
+  name         String                        // e.g. "Delhi NCR Hub"
+  code         String @unique                // Short code (e.g. "DEL", "BOM", "BLR")
+  city         String
+  region       String                        // "North", "South", "East", "West", "Central"
+  regionTag    String @default("")
+  address      String
+  capacity     Int    // Current capacity usage percentage (0-100)
+  activeAgents Int    // Number of agents currently working at this hub
+  totalPersonnel Int @default(0)
+  status       String // "OPTIMIZED", "WARNING", or "CRITICAL"
+  statusNote   String @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Agent: A delivery agent (separate from User for operational tracking)
+model Agent {
+  id             String @id @default(uuid())
+  name           String
+  email          String @unique
+  phone          String
+  hubCode        String                       // Which hub they're based at
+  assignedTasks  Int    @default(0)           // Total deliveries assigned
+  completedToday Int    @default(0)           // Deliveries completed today
+  status         String // "ACTIVE", "OFFLINE", or "ON_ROUTE"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// DashboardStats: Cached statistics for the Admin Dashboard
+// Only ONE row with id="singleton" — updated periodically
+model DashboardStats {
+  id               String   @id @default("singleton") // Always one row
+  activeShipments  Int                                // Total shipments in progress
+  totalHubs        Int                                // Number of hubs
+  registeredAgents Int                                // Total agents
+  hubUtilization   Float                              // Average hub capacity used (%)
+  onlinePercent    String   @default("98%")
+  growthPercent    String   @default("+12.4%")
+  globalReach      String   @default("Global Reach")
+  loadStatus       String   @default("Optimal Load")
+  updatedAt        DateTime @updatedAt
+}
+
+// Notification: In-app notifications sent to users
+model Notification {
+  id        String   @id @default(uuid())
+  userPhone String                         // Which user this notification is for
+  userRole  String   // "customer", "agent", or "admin"
+  type      String   // "order_confirmed", "out_for_delivery", "delivered", "delayed", "system_alert" etc.
+  title     String                         // Short notification title
+  message   String                         // Full notification message
+  awb       String   @default("")          // Related shipment AWB (if applicable)
+  read      Boolean  @default(false)       // Has the user seen this notification?
+  sentAt    DateTime @default(now())
+
+  @@index([userPhone, userRole]) // Fast lookup by user
+}
+
+// Payment: Records of all payment transactions
+model Payment {
+  id                 String   @id @default(uuid())
+  awbNumber          String   @default("")          // Which shipment this payment is for
+  customerPhone      String   @default("")
+  amount             Float    // Payment amount in INR (rupees)
+  currency           String   @default("INR")
+  paymentMode        String   // "PREPAID" or "COD" (Cash on Delivery)
+  paymentStatus      String   // "PENDING", "PAID", "FAILED", or "REFUNDED"
+  razorpayOrderId    String   @default("") // Razorpay order ID
+  razorpayPaymentId  String   @default("") // Razorpay payment ID (after successful payment)
+  razorpaySignature  String   @default("") // HMAC signature for verification
+  receipt            String   @default("")
+  description        String   @default("")
+  paymentDate        DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([customerPhone])
+  @@index([awbNumber])
+}
+
+// ShippingVolume: Daily shipment counts used for Admin Dashboard charts
+model ShippingVolume {
+  id     String @id @default(uuid())
+  day    String // "Mon", "Tue", "Wed" etc.
+  date   String // Full date string
+  units  Int    // Number of shipments that day
+  trend  String @default("up") // "up", "down", or "stable" compared to previous day
+}
+
+// CallbackRequest: When a customer requests a callback from support
+model CallbackRequest {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String   @default("")
+  message   String   @default("") // Customer's message/query
+  status    String   @default("pending") // "pending", "contacted", or "resolved"
+  createdAt DateTime @default(now())
+}
+
+// Promotion: Discount codes created by admins, used by customers during booking
+model Promotion {
+  id          String   @id @default(uuid())
+  code        String   @unique               // e.g. "EAGLE20", "NEW100"
+  title       String                         // Display name (e.g. "Launch Offer")
+  description String   @default("")          // Full description of the offer
+  discount    Float                          // Discount amount (% or flat ₹)
+  type        String                         // "percentage" or "flat"
+  validTill   String                         // Expiry date string (e.g. "2026-12-31")
+  active      Boolean  @default(true)        // Can be toggled on/off by admin
+  usageCount  Int      @default(0)           // How many times this code has been used
+  category    String   @default("All Services") // Which service this applies to
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Broadcast: Admin broadcast messages sent to agents/customers
+model Broadcast {
+  id       String   @id @default(uuid())
+  message  String                            // Broadcast message content
+  target   String                            // "All Agents", "All Customers", "Everyone", etc.
+  count    Int      @default(0)             // Number of recipients
+  sentAt   DateTime @default(now())         // When the broadcast was sent
+}
