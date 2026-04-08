@@ -1,0 +1,28 @@
+{
+  "name": "EagleEye Logistics",
+  "short_name": "EagleEye",
+  "description": "Precision Intelligence for Every Mile — Real-time global tracking and orchestrated logistics.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131B2E",
+  "theme_color": "#0058BE",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["logistics", "business", "shipping"],
+  "lang": "en",
+  "dir": "ltr"
+}

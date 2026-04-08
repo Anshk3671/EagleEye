@@ -1,0 +1,41 @@
+# EagleEye Full-Stack Development
+# Usage: docker compose up
+
+services:
+  # PostgreSQL Database (for production-like dev)
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: eagleeye
+      POSTGRES_USER: eagleeye
+      POSTGRES_PASSWORD: eagleeye_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eagleeye"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      DB_PROVIDER: postgresql
+      DATABASE_URL: postgresql://eagleeye:eagleeye_dev@db:5432/eagleeye?schema=public
+      PORT: 3001
+      NODE_ENV: development
+      SMS_PROVIDER: console
+      EMAIL_PROVIDER: console
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server/uploads:/app/uploads
+
+volumes:
+  pgdata:
